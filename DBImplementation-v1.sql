@@ -300,3 +300,57 @@ CREATE TABLE [Sales].ItemOrdered (
 /* SET SQL_MODE=@OLD_SQL_MODE; */
 /* SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS; */
 /* SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS; */
+
+/* start inserting data to tables*/
+-- insert state from excel file (all states)
+
+-- insert City with CityID:
+INSERT INTO Address.City 
+VALUES ('Seattle'), ('Bellevue'), ('Lynnwood'), 
+		('Portland'), ('Eugene'), 
+		('New York'), ('Los Angeles'), ('Chicago'), 
+		('Miami'), ('Dallas')
+
+
+--insert randomly generated addresses (fake address) :
+-- AddressID	Street	AptNo	ZipCode	CityID	StateID	AddressType
+INSERT INTO [Address].Address
+VALUES ('9226 Walnut Lane', NULL, '60018', 3, 'WA', 'C');
+INSERT INTO Address.Address
+VALUES ('1 Applegate Ave.', '213', '33129', 3, 'WA', 'C');
+INSERT INTO Address.Address
+VALUES ('21 Devon Street', NULL, '11226', 4, 'OR', 'C');
+INSERT INTO Address.Address
+VALUES ('533 Wall Street', '435', '11229', 4, 'OR', 'C');
+INSERT INTO Address.Address
+VALUES ('7650 East Cypress Lane', '110', '90291', 7, 'CA', 'C');
+INSERT INTO Address.Address
+VALUES ('567 East Longfellow Dr.', NULL, '98109', 1, 'WA', 'C');
+INSERT INTO Address.Address
+VALUES ('11 Newcastle Dr.', NULL, '98108', 1, 'WA', 'C');
+INSERT INTO Address.Address
+VALUES ('8669 North Grant Ave.', '321', '98109', 1, 'WA', 'C');
+INSERT INTO Address.Address
+VALUES ('80 Roberts Street', NULL, '98107', 2, 'WA', 'C');
+INSERT INTO Address.Address
+VALUES ('137 Ivy Street', NULL, '98104', 2, 'WA', 'C');
+INSERT INTO Address.Address
+VALUES ('1919 Post Alley', NULL, '98101', 1, 'WA', 'R'); --Pink Door
+INSERT INTO Address.Address
+VALUES ('1222 East Pine St.', NULL, '98122', 1, 'WA', 'R'); --Ramen Danbo
+INSERT INTO Address.Address
+VALUES ('4759 Brooklyn Ave NE', NULL, '98104', 1, 'WA', 'R'); -- Cedars
+INSERT INTO Address.Address
+VALUES ('11020 NE 6th St #90', NULL, '98004', 2, 'WA', 'R'); --Dolar Shop
+INSERT INTO Address.Address
+VALUES ('14007 Hwy 99 # G', NULL, '98087', 3, 'WA', 'R'); -- New Seoul
+INSERT INTO Address.Address
+VALUES ('12121 Northup Way #205', NULL, '98005', 2, 'WA', 'R'); --Looking for Chai 
+INSERT INTO Address.Address
+VALUES ('609 SE Ankeny St C', NULL, '97214', 4, 'OR', 'R'); --Nong's Khao Man Gai
+INSERT INTO Address.Address
+VALUES ('1701 SW Jefferson St', NULL, '97201', 4, 'OR', 'R'); -- Blue Star Donut
+INSERT INTO Address.Address
+VALUES ('3470 W 6th St #7', NULL, '90020', 7, 'CA', 'R'); --Sun Nong Dan
+INSERT INTO Address.Address
+VALUES ('555 S Alexandria Ave', '110', '90020', 7, 'CA', 'R'); --Blue Bottle Coffee
