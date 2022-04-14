@@ -398,6 +398,14 @@ UPDATE [User].Membership
 SET StartDate = '2022-01-01'
 WHERE MemberID IN (7,8,9); --memberID =custID in our case
 
+----------PAYMENT TABLE--------------
+-- Alter table to include UpatePayment function
+ALTER TABLE Sales.Payment DROP COLUMN PaymentAmount;
+ALTER TABLE Sales.Payment ADD PaymentAmount AS (dbo.UpatePayment(OrderID));
+
+-- alter table to include PaymentStatus:
+ALTER TABLE Sales.Payment ADD PaymentStatus varchar(45); -- Pending, In Progress, Completed
+
 -- INSERT ORDERS:
 -- OrderID(ID)	RestaurantID(11-20)	CustomerID(2-21)	DeliveryPersonID(0-9)	OrderStatus(varchar)	OrderPrice(function)
 -- delivery person: 0-5 are in WA, 6-7 portland, 8-9 in LA
@@ -412,25 +420,22 @@ DELETE FROM Sales.[Order];
 DBCC CHECKIDENT ('Sales.[Order]', RESEED, 0) -- (Database Console Command), reset OrderID identity to 0
 GO
 
+
+--INSERT Payment:
+--PaymentID(ID)	OrderID	CustomerID	PaymentAmount
+INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (1, 7, 'Pending');
+
+--if needed for troubleshooting
+DELETE FROM Sales.Payment;
+DBCC CHECKIDENT ('Sales.Payment', RESEED, 0) -- (Database Console Command), reset OrderID identity to 0
+GO
+
 -- INSERT ItemOrdered:
 --OrderID(int)	ItemID(int)	Quantity(int)
 DELETE FROM Sales.ItemOrdered;
 
 INSERT INTO Sales.ItemOrdered VALUES (1, 1, 2), (1, 2, 1); -- $24*2 + $23*1 = $71
 
-
--- Alter table to include UpatePayment function
-ALTER TABLE Sales.Payment DROP COLUMN PaymentAmount;
-ALTER TABLE Sales.Payment ADD PaymentAmount AS (dbo.UpatePayment(OrderID));
-
---INSERT Payment:
---PaymentID(ID)	OrderID	CustomerID	PaymentAmount
-INSERT INTO Sales.Payment (OrderID, CustomerID) VALUES (1, 7);
-
---if needed for troubleshooting
-DELETE FROM Sales.Payment;
-DBCC CHECKIDENT ('Sales.Payment', RESEED, 0) -- (Database Console Command), reset OrderID identity to 0
-GO
 
 -- see results:
 SELECT * FROM Sales.[Order];
