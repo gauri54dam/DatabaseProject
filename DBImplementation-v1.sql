@@ -193,7 +193,7 @@ CREATE TABLE [Sales].[Order] (
   [RestaurantID] INT NOT NULL,
   [CustomerID] INT NOT NULL,
   [DeliveryPersonID] INT NOT NULL,
-  [OrderPrice] FLOAT NOT NULL,
+  [OrderPrice] MONEY NOT NULL,
   [OrderStatus] VARCHAR(45) NOT NULL,
   PRIMARY KEY ([OrderID]),
   CONSTRAINT FK_Order_CustomerID
@@ -216,7 +216,7 @@ CREATE TABLE [Sales].[Order] (
 CREATE TABLE [Sales].Payment (
   [PaymentID] INT NOT NULL IDENTITY,
   [OrderID] INT NOT NULL,
-  [PaymentAmount] FLOAT NOT NULL,
+  [PaymentAmount] MONEY NOT NULL,
   [CustomerID] INT NOT NULL,
   PRIMARY KEY ([PaymentID]),
   CONSTRAINT FK_Payment_OrderID
@@ -269,7 +269,7 @@ CREATE TABLE [Restaurant].MenuItems (
   [ItemID] INT NOT NULL IDENTITY,
   [MenuID] INT NOT NULL,
   [ItemName] VARCHAR(200) NOT NULL,
-  [UnitPrice] FLOAT NOT NULL,
+  [UnitPrice] MONEY NOT NULL,
   [Description] VARCHAR(500) NULL,
   PRIMARY KEY ([ItemID]),
   CONSTRAINT FK_MenuItems
@@ -284,7 +284,7 @@ CREATE TABLE [Restaurant].MenuItems (
 -- SQLINES DEMO *** ------------------------------------
 -- SQLINES LICENSE FOR EVALUATION USE ONLY
 CREATE TABLE [Sales].ItemOrdered (
-  [OrderID] INT NOT NULL IDENTITY,
+  [OrderID] INT NOT NULL,
   [ItemID] INT NOT NULL,
   [Quantity] INT NOT NULL,
   PRIMARY KEY ([OrderID], [ItemID]),
