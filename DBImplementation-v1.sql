@@ -301,8 +301,10 @@ CREATE TABLE [Sales].ItemOrdered (
 /* SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS; */
 /* SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS; */
 
-/* start inserting data to tables*/
--- insert state from excel file (all states)
+
+/* start INSERTING DATA to tables*/
+--------------------INSERT ADDRESS SCHEMA----------------------
+-- insert state from excel file (all states) via import wizard
 
 -- insert City with CityID:
 INSERT INTO Address.City 
@@ -312,7 +314,7 @@ VALUES ('Seattle'), ('Bellevue'), ('Lynnwood'),
 		('Miami'), ('Dallas')
 
 
---insert randomly generated addresses (fake address) :
+--insert randomly generated addresses (fake address) for customers, real addresses for restaurants:
 -- AddressID	Street	AptNo	ZipCode	CityID	StateID	AddressType
 INSERT INTO [Address].Address
 VALUES ('9226 Walnut Lane', NULL, '60018', 3, 'WA', 'C');
@@ -355,7 +357,7 @@ VALUES ('3470 W 6th St #7', NULL, '90020', 7, 'CA', 'R'); --Sun Nong Dan
 INSERT INTO Address.Address
 VALUES ('555 S Alexandria Ave', '110', '90020', 7, 'CA', 'R'); --Blue Bottle Coffee
 
---insert more address for customers (total 20 customers):
+--insert more address for customers, randomly generated (total 20 customers):
 INSERT INTO Address.Address
 VALUES ('12345 8th AVE NE', '3', '98125', 1, 'WA', 'C'),
 	('635 Wood Street', NULL, '98107', 2, 'WA', 'C'),
@@ -435,7 +437,14 @@ UPDATE DAMG6210_Team1.[User].[Customer] SET AddressID = 28 WHERE CustomerID = 19
 UPDATE DAMG6210_Team1.[User].[Customer] SET AddressID = 29 WHERE CustomerID = 20;
 UPDATE DAMG6210_Team1.[User].[Customer] SET AddressID = 30 WHERE CustomerID = 21;
 
--- Insert Restaurant:
+-- Retrieve results from Address Schema:
+SELECT * FROM Address.Address;
+SELECT * FROM Address.City;
+SELECT * FROM Address.State;
+
+
+---------------- INSERT Restaurant SCHEMA----------------------
+-- Insert Restaurant Entity
 --COLUMN: RestaurantID	ManagerID	AddressID	Name	PhoneNo	OpenTime	CloseTime
 INSERT INTO Restaurant.Restaurant
 VALUES (11, 11, 'The Pink Door', '206-443-3241', '11:30', '22:00'),
@@ -449,7 +458,7 @@ VALUES (11, 11, 'The Pink Door', '206-443-3241', '11:30', '22:00'),
 	(9, 19, 'Sun Nong Dan 6th St.', '213-365-0303', '09:00', '23:30'),
 	(10, 20, 'Blue Bottle Coffee', '510-653-3394', '07:00', '18:00');
 
--- INSERT menu:
+-- INSERT Menu entity:
 INSERT INTO Restaurant.Menu
 VALUES (11, 'Pasta and Entree'),
 	(12, 'Ramen and Drink'), (13, 'Lunch and Dinner'),
@@ -457,53 +466,210 @@ VALUES (11, 'Pasta and Entree'),
 	(16, 'Chef Special'), (17, 'Menu'), (18, 'Donut'),
 	(19, 'Special menu'), (20, 'Coffee');
 
--- Insert menu items: import from excel file (MenuItems.xlsx)
+-- Insert MenuItems: import from excel file (MenuItems.xlsx)
+
+--Retrieve results from RESTAURANT Schema:
+SELECT * FROM Restaurant.Restaurant;
+SELECT * FROM Restaurant.Menu;
+SELECT * FROM Restaurant.MenuItems;
+
+-- Retrieve the restaurant menu
+SELECT r.RestaurantID, r.Name, m.MenuName, mi.ItemID, mi.ItemName, mi.UnitPrice
+FROM Restaurant.Restaurant r
+JOIN Restaurant.Menu m
+ON r.RestaurantID = m.RestaurantID
+JOIN Restaurant.MenuItems mi
+ON m.MenuID = mi.MenuID
+--WHERE r.RestaurantID IN (11,12,13,14,15,16) -- can change as needed. Restaurant ID = 11 - 20
+ORDER BY r.RestaurantID;
+
+-- Retrieve customer and city
+SELECT c.CustomerID, c.AddressID, a.CityID, ct.CityName
+FROM [User].[Customer] c
+JOIN Address.Address a
+ON c.AddressID = a.AddressID
+JOIN Address.City ct
+ON a.CityID = ct.CityID;
+
+-- Retrieve restaurant and city
+SELECT r.RestaurantID, r.Name, r.AddressID, a.CityID, ct.CityName
+FROM Restaurant.Restaurant r
+JOIN Address.Address a
+ON r.AddressID = a.AddressID
+JOIN Address.City ct
+ON a.CityID = ct.CityID;
+
 
 -- UPDATE member start date to check if the MemberType changed as described in TRIGGER:
 UPDATE [User].Membership
 SET StartDate = '2022-01-01'
 WHERE MemberID IN (7,8,9); --memberID =custID in our case
 
-----------PAYMENT TABLE--------------
--- Alter table to include UpatePayment function
-ALTER TABLE Sales.Payment DROP COLUMN PaymentAmount;
-ALTER TABLE Sales.Payment ADD PaymentAmount AS (dbo.UpatePayment(OrderID));
+--Retrieve results:
+SELECT * FROM [User].Membership;
 
--- alter table to include PaymentStatus:
-ALTER TABLE Sales.Payment ADD PaymentStatus varchar(45); -- Pending, In Progress, Completed
 
--- INSERT ORDERS:
--- OrderID(ID)	RestaurantID(11-20)	CustomerID(2-21)	DeliveryPersonID(0-9)	OrderStatus(varchar)	OrderPrice(function)
--- delivery person: 0-5 are in WA, 6-7 portland, 8-9 in LA
-INSERT INTO Sales.[Order] VALUES (11, 7, 0,  'Complete', 0); 
--- 11= Pink door, 12 = Danbo, 13= Cedars, 14= Dolar Shop, 15=New Seoul
+--------------------------INSERT SALES SCHEMA--------------
 
---troubleshooting when entering order...
--- start form empty column
-DELETE FROM Sales.[Order];
+-- INSERT ORDER
+-- for troubleshooting when entering order...
+DELETE FROM Sales.[Order]; -- start form empty column
 
 --if needed, reseed so that IDENTITY ID starts from 0:
 DBCC CHECKIDENT ('Sales.[Order]', RESEED, 0) -- (Database Console Command), reset OrderID identity to 0
 GO
 
+-- COLUMN: OrderID(IDENTITY)	RestaurantID(11-20)	CustomerID(2-21)	DeliveryPersonID(0-9)	OrderStatus(varchar)	OrderPrice(function)
+-- delivery person: 0-5 are in WA, 6-7 portland, 8-9 in LA
+INSERT INTO Sales.[Order] VALUES (11, 7, 0,  'Complete', 0); 
+-- 11= Pink door, 12 = Danbo, 13= Cedars, 14= Dolar Shop, 15=New Seoul
+INSERT INTO Sales.[Order] VALUES (11, 7, 0,  'Pending', 0); 
+INSERT INTO Sales.[Order] VALUES (11, 8, 1,  'Pending', 0); 
+INSERT INTO Sales.[Order] VALUES (11, 9, 2,  'Pending', 0);
+INSERT INTO Sales.[Order] VALUES (12, 12, 3,  'Pending', 0);
+INSERT INTO Sales.[Order] VALUES (12, 15, 4,  'Pending', 0);
+INSERT INTO Sales.[Order] VALUES (12, 12, 5,  'Pending', 0);
+INSERT INTO Sales.[Order] VALUES (13, 15, 1,  'Pending', 0);
+INSERT INTO Sales.[Order] VALUES (13, 12, 2,  'Pending', 0);
+INSERT INTO Sales.[Order] VALUES (13, 15, 3,  'Pending', 0);
+INSERT INTO Sales.[Order] VALUES (14, 10, 4,  'Pending', 0);
+INSERT INTO Sales.[Order] VALUES (14, 13, 5,  'Pending', 0);
+INSERT INTO Sales.[Order] VALUES (15, 2, 1,  'Pending', 0);
+INSERT INTO Sales.[Order] VALUES (15, 3, 2,  'Pending', 0);
+INSERT INTO Sales.[Order] VALUES (15, 14, 3,  'Pending', 0);
+INSERT INTO Sales.[Order] VALUES (16, 11, 4,  'Pending', 0);
+INSERT INTO Sales.[Order] VALUES (16, 16, 5,  'Pending', 0);
 
---INSERT Payment:
---PaymentID(ID)	OrderID	CustomerID	PaymentAmount
-INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (1, 7, 'Pending');
+-- add more so each customer at least order 3x (to cID 12 and 15).
+INSERT INTO Sales.[Order] VALUES (11, 12, 1,  'Pending', 0);
+INSERT INTO Sales.[Order] VALUES (11, 15, 2,  'Pending', 0);
+INSERT INTO Sales.[Order] VALUES (14, 12, 3,  'Pending', 0);
+INSERT INTO Sales.[Order] VALUES (14, 15, 4,  'Pending', 0);
+INSERT INTO Sales.[Order] VALUES (15, 12, 5,  'Pending', 0);
+INSERT INTO Sales.[Order] VALUES (15, 15, 1,  'Pending', 0);
 
---if needed for troubleshooting
-DELETE FROM Sales.Payment;
-DBCC CHECKIDENT ('Sales.Payment', RESEED, 0) -- (Database Console Command), reset OrderID identity to 0
-GO
+-- add more for CustomerID# 10, 11 (bellevue) and 18 -19 (Portland):
+-- Order ID 23 - 25 for RestID 14 and 26 -28 for RestID 16
+INSERT INTO Sales.[Order] VALUES (14, 10, 4,  'Pending', 0); --RestID 14 and 16 are in bellevue
+INSERT INTO Sales.[Order] VALUES (14, 11, 4,  'Pending', 0); 
+INSERT INTO Sales.[Order] VALUES (14, 10, 5,  'Pending', 0); 
+INSERT INTO Sales.[Order] VALUES (16, 11, 5,  'Pending', 0);
+INSERT INTO Sales.[Order] VALUES (16, 10, 3,  'Pending', 0);
+INSERT INTO Sales.[Order] VALUES (16, 11, 3,  'Pending', 0);
+-- Order ID 29 - 31 for RestID 17 and 32 -34 for RestID 18
+INSERT INTO Sales.[Order] VALUES (17, 18, 6,  'Pending', 0); --RestID 17 and 18 are in Portland
+INSERT INTO Sales.[Order] VALUES (17, 19, 7,  'Pending', 0);
+INSERT INTO Sales.[Order] VALUES (17, 18, 6,  'Pending', 0);
+INSERT INTO Sales.[Order] VALUES (18, 19, 7,  'Pending', 0);
+INSERT INTO Sales.[Order] VALUES (18, 18, 6,  'Pending', 0);
+INSERT INTO Sales.[Order] VALUES (18, 19, 7,  'Pending', 0);
+
 
 -- INSERT ItemOrdered:
+-- if needed for troubleshooting:
+DELETE FROM Sales.ItemOrdered; -- start from 0 entry
+
 --OrderID(int)	ItemID(int)	Quantity(int)
-DELETE FROM Sales.ItemOrdered;
+INSERT INTO Sales.ItemOrdered VALUES (1, 1, 2), (1, 2, 1);
+INSERT INTO Sales.ItemOrdered VALUES (2, 1, 1),  (2, 2, 1); --11
+INSERT INTO Sales.ItemOrdered VALUES (3, 3, 1),  (3, 4, 1);
 
-INSERT INTO Sales.ItemOrdered VALUES (1, 1, 2), (1, 2, 1); -- $24*2 + $23*1 = $71
+INSERT INTO Sales.ItemOrdered VALUES (4, 6, 2), (4, 7, 1), (4, 8, 1); --12
+INSERT INTO Sales.ItemOrdered VALUES (5, 6, 1),  (5, 7, 1);
+INSERT INTO Sales.ItemOrdered VALUES (6, 9, 1),  (6, 6, 1);
+
+INSERT INTO Sales.ItemOrdered VALUES (7, 11, 2), (7, 12, 1), (7, 13, 1); --13
+INSERT INTO Sales.ItemOrdered VALUES (8, 11, 1),  (8, 14, 1);
+INSERT INTO Sales.ItemOrdered VALUES (9, 11, 1),  (9, 15, 1);
+
+INSERT INTO Sales.ItemOrdered VALUES (10, 16, 1),  (10, 17, 1); --14
+INSERT INTO Sales.ItemOrdered VALUES (11, 16, 1),  (11, 18, 1);
+
+INSERT INTO Sales.ItemOrdered VALUES (12, 21, 2), (12, 22, 1), (12, 23, 1); --15
+INSERT INTO Sales.ItemOrdered VALUES (13, 21, 1),  (13, 24, 1);
+INSERT INTO Sales.ItemOrdered VALUES (14, 21, 1),  (14, 25, 1);
+
+INSERT INTO Sales.ItemOrdered VALUES (15, 26, 1),  (15, 27, 1); --16
+INSERT INTO Sales.ItemOrdered VALUES (16, 27, 1),  (16, 29, 1);
+
+-- add more to Order ID 17 - 22:
+INSERT INTO Sales.ItemOrdered VALUES (17, 3, 1),  (17, 4, 1); --11
+INSERT INTO Sales.ItemOrdered VALUES (18, 3, 1),  (18, 4, 1);
+
+INSERT INTO Sales.ItemOrdered VALUES (19, 16, 1),  (19, 17, 1); --14
+INSERT INTO Sales.ItemOrdered VALUES (20, 16, 1),  (20, 17, 1);
+
+INSERT INTO Sales.ItemOrdered VALUES (21, 21, 1),  (21, 24, 1); --15
+INSERT INTO Sales.ItemOrdered VALUES (22, 21, 1),  (22, 25, 1);
+
+-- Order ID 23 - 25 for RestID 14 and 26 -28 for RestID 16
+INSERT INTO Sales.ItemOrdered VALUES (23, 18, 1),  (23, 19, 2),  (23, 20, 2); --14 ITEMID# 16 - 20
+INSERT INTO Sales.ItemOrdered VALUES (24, 17, 1),  (24, 18, 1);
+INSERT INTO Sales.ItemOrdered VALUES (25, 19, 1),  (25, 18, 1), (25, 16, 1); 
+INSERT INTO Sales.ItemOrdered VALUES (26, 26, 1),  (26, 27, 1); --16 ITEMID# 26-30
+INSERT INTO Sales.ItemOrdered VALUES (27, 26, 1),  (27, 29, 1), (27, 28, 2); 
+INSERT INTO Sales.ItemOrdered VALUES (28, 26, 1),  (28, 27, 1), (28, 30, 2);
+
+-- Order ID 29 - 31 for RestID 17 and 32 -34 for RestID 18
+INSERT INTO Sales.ItemOrdered VALUES (29, 31, 1),  (29, 32, 2),  (29, 34, 2); --17 ITEMID# 31-35
+INSERT INTO Sales.ItemOrdered VALUES (30, 31, 1),  (30, 33, 1);
+INSERT INTO Sales.ItemOrdered VALUES (31, 31, 1),  (31, 34, 1), (31, 35, 1); 
+INSERT INTO Sales.ItemOrdered VALUES (32, 36, 2),  (32, 37, 2); --18 ITEMID# 36-40
+INSERT INTO Sales.ItemOrdered VALUES (33, 38, 1),  (33, 36, 1), (33, 39, 2); 
+INSERT INTO Sales.ItemOrdered VALUES (34, 40, 1),  (34, 38, 3), (34, 36, 2);
 
 
--- see results:
+--INSERT OrderReview (OrderID# 1-22), randomly generated:
+-- RID, OrderID (int), Rate (1-5), Review (varchar)
+INSERT INTO Sales.OrderReview VALUES 
+	(1, 5, 'Friendly delivery'),
+	(2, 4, 'good'),
+	(3, 5, 'Great delivery'),
+	(4, 3, 'Okay'),
+	(5, 5, 'Great food'),
+	(6, 5, 'Friendly delivery'),
+	(7, 4, 'good'),
+	(8, 5, 'Great delivery'),
+	(9, 3, 'Okay'),
+	(10, 5, 'Great food'),
+	(11, 5, 'Friendly delivery'),
+	(12, 4, 'good'),
+	(13, 5, 'Great'),
+	(14, 3, 'Okay'),
+	(15, 5, 'Great food'),
+	(16, 5, 'Good experience'),
+	(17, 4, 'Good'),
+	(18, 5, 'Great food'),
+	(19, 2, 'The food is cold and take a while'),
+	(20, 5, 'Great food'),
+	(21, 4, 'Okay'),
+	(22, 1, 'Not a great experience');
+
+-- INSERT OrderReview for Order#23-28:
+INSERT INTO Sales.OrderReview VALUES 
+	(23, 5, 'Great'),
+	(24, 3, 'Good selection but overpriced'),
+	(25, 2, 'Better to dine in. It is expensive!'),
+	(26, 5, 'Good experience'),
+	(27, 4, 'Good'),
+	(28, 1, 'Food is bland and delivery takes a long time');
+
+-- INSERT OrderReview for Order#23-28:
+INSERT INTO Sales.OrderReview VALUES 
+	(29, 3, 'Okay'),
+	(30, 5, 'Great food'),
+	(31, 5, 'Friendly delivery'),
+	(32, 4, 'Good donut!'),
+	(33, 5, 'Great flavor'),
+	(34, 3, 'Overpriced!');
+
+
+-- INSERT PAYMENT-------------
+
+
+
+-- RETRIEVE results for SALES Schema:
 SELECT * FROM Sales.[Order];
 SELECT * FROM Sales.ItemOrdered;
 SELECT * FROM Sales.Payment;
+SELECT * FROM Sales.OrderReview;
