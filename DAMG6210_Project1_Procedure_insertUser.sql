@@ -35,6 +35,36 @@ BEGIN
 	CLOSE SYMMETRIC KEY TestSymmetricKey;
 END
 
+CREATE TRIGGER [User].onInsertUser
+	ON damg6210_Team1.[User].[User]  
+	FOR INSERT 
+AS BEGIN 
+	DECLARE @usertype varchar(5);
+	DECLARE @userid INT;
+	DECLARE @lastMemberId INT;
+	
+	SELECT @userid = i.UserID from INSERTED i;
+	SELECT @usertype = i.UserType from INSERTED i;
+		
+	
+	
+	IF(@usertype = 'C')
+	BEGIN 
+		INSERT INTO DAMG6210_Team1.[User].[Membership] values('Silver', 0.05, CAST(GETDATE() AS DATE));
+		SET @lastMemberId = SCOPE_IDENTITY();
+		INSERT INTO DAMG6210_Team1.[User].[Customer] values (@userid, @lastMemberId, null);
+		
+	END
+	IF(@usertype = 'M')
+	BEGIN 
+		INSERT INTO DAMG6210_Team1.[User].[Manager]  values (@userid);
+	END
+	IF(@usertype = 'D')
+	BEGIN 
+		INSERT INTO DAMG6210_Team1.[User].[DeliveryPerson]  values (@userid);
+	END		
+END
+
 -- test
 /*
 EXEC [User].insertUser 'M','MaxZhening','Jones','0123456789', 'manager@team1.com', 'TestManagerPS';
