@@ -79,22 +79,22 @@ AS
 		ELSE IF @DateDiff < 60
 			BEGIN 
 				SET @MemberType = 'Silver'
-				SET @Discount = 0.10				
+				SET @Discount = 0.04				
 			END
 		ELSE IF @DateDiff < 90
 			BEGIN 
 				SET @MemberType = 'Gold'
-				SET @Discount = 0.20				
+				SET @Discount = 0.08				
 			END
 		ELSE IF @DateDiff < 120
 			BEGIN 
 				SET @MemberType = 'Platinum'
-				SET @Discount = 0.25				
+				SET @Discount = 0.12				
 			END
 		ELSE 
 			BEGIN 
 				SET @MemberType = 'Crown'
-				SET @Discount = 0.30				
+				SET @Discount = 0.16				
 			END		
 		
 		UPDATE dbo.Membership 			
