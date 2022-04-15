@@ -370,10 +370,78 @@ VALUES ('12345 8th AVE NE', '3', '98125', 1, 'WA', 'C'),
 	('9617 Academy Drive', '888', '90072', 7, 'CA', 'C'),
 	('15 Princeton Ave.', '777', '90071', 7, 'CA', 'C'); 
 
+--Insert User, Manager, DeliveryPerson, Customer using StoredProcedure
+--SP params - UserType(M - Manager, D - Delivery Person, C - Customer), LastName, FirstName, Phone, Email, Password
+EXEC [User].insertUser 'M','Smith','James','2341567890', 'j.smith@gmail.com', 'password@2301';
+EXEC [User].insertUser 'M', 'Davis', 'Michael', '2678554444', 'm.smith@gmail.com','password@2345';
+EXEC [User].insertUser 'M','Robert','Andrew','5545432456', 'andrew.r@gmail.com', 'password@444';
+EXEC [User].insertUser 'M', 'Maria', 'Garcia', '3421245678', 'gracia.@gmail.com', 'password@1111';
+EXEC [User].insertUser 'M', 'Hernandez', 'Mary', '7789098765', 'm.hernandez@gmail.com', 'password@5678';
+EXEC [User].insertUser 'M', 'Johnson', 'Robert', '5544326789', 'r.johnson@gmail.com', 'password@8888';
+EXEC [User].insertUser 'M', 'Oliver', 'John', '5423678900', 'john.o@gmail.com', 'password@6666';
+EXEC [User].insertUser 'M', 'Williams', 'Liam', '4445667899', 'liamWilliams@gmail.com', 'password@1991';
+EXEC [User].insertUser 'M', 'Brown', 'Lucas', '2344588890', 'lucasbrown.m@gmail.com', 'password@2344';
+EXEC [User].insertUser 'M', 'Miller', 'Evelyn', '3421245679', 'evelynmiller.m@gmail.com', 'password@8909';
+
+EXEC [User].insertUser 'D','Jablonski','Karl','6789098765', 'karl.j@gmail.com', 'password@201';
+EXEC [User].insertUser 'D', 'Karttunen', 'Matti', '2345436788', 'matti.k@gmail.com','password@45';
+EXEC [User].insertUser 'D','Erricson','Tom','7890765423', 'tom.eric.r@gmail.com', 'password';
+EXEC [User].insertUser 'D', 'Johnson', 'Michael', '2234567544', 'mic_jon.@gmail.com', 'password@111';
+EXEC [User].insertUser 'D', 'Lopez', 'Sofia', '1234543211', 'ms_lopez@gmail.com', 'password@58';
+EXEC [User].insertUser 'D', 'Rossi', 'Valentina', '2345678900', 'v_rossi@gmail.com', 'password@88';
+EXEC [User].insertUser 'D', 'Patel', 'Sanjay', '2345678900', 'spatel@gmail.com', 'password@6666';
+EXEC [User].insertUser 'D', 'Williams', 'Megan', '2345678888', 'Williams_m@gmail.com', 'password@11';
+EXEC [User].insertUser 'D', 'Dunphey', 'Luke', '9090767666', 'luke_d.m@gmail.com', 'password@24';
+EXEC [User].insertUser 'D', 'Pritchet', 'Jay', '1245432345', 'p_jay.m@gmail.com', 'password@89';
+
+EXEC [User].insertUser 'C','Frank','Benjamin','6567876444', 'b.frank@gmail.com', 'password@20122';
+EXEC [User].insertUser 'C', 'Davis', 'Jennifer', '8909765432', 'j_davis@gmail.com','password@4522';
+EXEC [User].insertUser 'C','Matt','Liam','2277653454', 'liam_m@gmail.com', 'password22';
+EXEC [User].insertUser 'C', 'James', 'Michael', '9878906678', 'mic_j@gmail.com', 'password@1141';
+EXEC [User].insertUser 'C', 'Wilson', 'George', '2345142344', 'george_w@gmail.com', 'password@548';
+EXEC [User].insertUser 'C', 'Moore', 'Benjamin', '8986725344', 'ben_m@gmail.com', 'password@868';
+EXEC [User].insertUser 'C', 'Kapoor', 'Kunal', '3367873456', 'kunal_k@gmail.com', 'password@66';
+EXEC [User].insertUser 'C', 'Taylor', 'Ethan', '987653457', 'ethan_t@gmail.com', 'password@11';
+EXEC [User].insertUser 'C', 'Anderson', 'Daniel', '8765342122', 'daniel_a.m@gmail.com', 'password@24';
+EXEC [User].insertUser 'C', 'Thomas', 'Emily', '9876345625', 'emily_t@gmail.com', 'password@859';
+EXEC [User].insertUser 'C','White','Michael','2987634567', 'mic_w.j@gmail.com', 'password@2051';
+EXEC [User].insertUser 'C', 'Green', 'Olivia', '9876543442', 'olivia_g@gmail.com','password@455';
+EXEC [User].insertUser 'C','Harris','Charlie','785467388', 'charlie_h.r@gmail.com', 'password5';
+EXEC [User].insertUser 'C', 'Wilson', 'Oscar', '3898764567', 'oscar_w.@gmail.com', 'password@1151';
+EXEC [User].insertUser 'C', 'Harper', 'Poppy', '7874567899', 'poppy@gmail.com', 'password@558';
+EXEC [User].insertUser 'C', 'Rossi', 'Noah', '9875643333', 'noah_r@gmail.com', 'password@838';
+EXEC [User].insertUser 'C', 'Dawson', 'Jack', '9874562233', 'jack_d@gmail.com', 'password@66466';
+EXEC [User].insertUser 'C', 'Anderson', 'Ava', '7645233322', 'ava_a@gmail.com', 'password@141';
+EXEC [User].insertUser 'C', 'Brown', 'Margaret', '6532456733', 'margaret_b.m@gmail.com', 'password@244';
+EXEC [User].insertUser 'C', 'Thomas', 'Mia', '8933445511', 'thomas_mia@gmail.com', 'password@849';
+
+--Updating the AddressID for customers
+UPDATE DAMG6210_Team1.[User].[Customer] SET AddressID = 1 WHERE CustomerID = 2;
+UPDATE DAMG6210_Team1.[User].[Customer] SET AddressID = 2 WHERE CustomerID = 3;
+UPDATE DAMG6210_Team1.[User].[Customer] SET AddressID = 3 WHERE CustomerID = 4;
+UPDATE DAMG6210_Team1.[User].[Customer] SET AddressID = 4 WHERE CustomerID = 5;
+UPDATE DAMG6210_Team1.[User].[Customer] SET AddressID = 5 WHERE CustomerID = 6;
+UPDATE DAMG6210_Team1.[User].[Customer] SET AddressID = 6 WHERE CustomerID = 7;
+UPDATE DAMG6210_Team1.[User].[Customer] SET AddressID = 7 WHERE CustomerID = 8;
+UPDATE DAMG6210_Team1.[User].[Customer] SET AddressID = 8 WHERE CustomerID = 9;
+UPDATE DAMG6210_Team1.[User].[Customer] SET AddressID = 9 WHERE CustomerID = 10;
+UPDATE DAMG6210_Team1.[User].[Customer] SET AddressID = 10 WHERE CustomerID = 11;
+UPDATE DAMG6210_Team1.[User].[Customer] SET AddressID = 21 WHERE CustomerID = 12;
+UPDATE DAMG6210_Team1.[User].[Customer] SET AddressID = 22 WHERE CustomerID = 13;
+UPDATE DAMG6210_Team1.[User].[Customer] SET AddressID = 23 WHERE CustomerID = 14;
+UPDATE DAMG6210_Team1.[User].[Customer] SET AddressID = 24 WHERE CustomerID = 15;
+UPDATE DAMG6210_Team1.[User].[Customer] SET AddressID = 25 WHERE CustomerID = 16;
+UPDATE DAMG6210_Team1.[User].[Customer] SET AddressID = 26 WHERE CustomerID = 17;
+UPDATE DAMG6210_Team1.[User].[Customer] SET AddressID = 27 WHERE CustomerID = 18;
+UPDATE DAMG6210_Team1.[User].[Customer] SET AddressID = 28 WHERE CustomerID = 19;
+UPDATE DAMG6210_Team1.[User].[Customer] SET AddressID = 29 WHERE CustomerID = 20;
+UPDATE DAMG6210_Team1.[User].[Customer] SET AddressID = 30 WHERE CustomerID = 21;
+
 -- Retrieve results from Address Schema:
 SELECT * FROM Address.Address;
 SELECT * FROM Address.City;
 SELECT * FROM Address.State;
+
 
 ---------------- INSERT Restaurant SCHEMA----------------------
 -- Insert Restaurant Entity
