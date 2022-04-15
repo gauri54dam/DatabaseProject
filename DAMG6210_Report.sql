@@ -74,3 +74,38 @@ where a.[rank] <=3
 group by  a.CustomerID , TotalOrderCount
 GO
 
+USE [DAMG6210_Team1]
+GO
+
+/****** Object:  View [dbo].[RestaurantReview]    Script Date: 4/14/2022 10:23:46 PM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+create view [dbo].[RestaurantReview] as
+with cte as (
+select 
+	a.[Name] as Restaurant_Name, 
+	count(c.orderID) as Review_count, 
+	avg(c.Rate) as Business_Rating
+from Restaurant.Restaurant a
+join Sales.[Order] b
+on a.RestaurantID = b.RestaurantID
+join Sales.OrderReview c
+on b.OrderID = c.OrderID
+group by a.[Name]
+)
+select Restaurant_Name,
+		isnull(cast([1] as int), 0) 'Rating 1',
+		isnull(cast([2] as int), 0) 'Rating 2',
+		isnull(cast([3] as int), 0) 'Rating 3',
+		isnull(cast([4] as int), 0) 'Rating 4',
+		isnull(cast([5] as int), 0) 'Rating 5'
+from
+(select Restaurant_Name, Review_count, Business_Rating from cte) as sourceTb
+pivot (max(Review_count) for Business_Rating in ([1],[2],[3],[4],[5])) as pivotTb
+GO
+
+
