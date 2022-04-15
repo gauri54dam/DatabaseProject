@@ -194,7 +194,7 @@ CREATE TABLE [Sales].[Order] (
   [CustomerID] INT NOT NULL,
   [DeliveryPersonID] INT NOT NULL,
   [OrderPrice] MONEY NOT NULL,
-  [OrderStatus] VARCHAR(45) NOT NULL,
+  [OrderStatus] VARCHAR(45) NOT NULL DEFAULT 'Pending',
   PRIMARY KEY ([OrderID]),
   CONSTRAINT FK_Order_CustomerID
     FOREIGN KEY ([CustomerID])
@@ -217,6 +217,7 @@ CREATE TABLE [Sales].Payment (
   [PaymentID] INT NOT NULL IDENTITY,
   [OrderID] INT NOT NULL,
   [PaymentAmount] MONEY NOT NULL,
+  [PaymentStatus] varchar(45) NOT NULL DEFAULT 'Pending',
   [CustomerID] INT NOT NULL,
   PRIMARY KEY ([PaymentID]),
   CONSTRAINT FK_Payment_OrderID
@@ -665,8 +666,15 @@ INSERT INTO Sales.OrderReview VALUES
 
 
 -- INSERT PAYMENT-------------
+--Clean up Payment
+UPDATE [Sales].[Order] SET OrderStatus = 'Pending';
+DELETE FROM Sales.Payment;
+DBCC CHECKIDENT ('Sales.Payment', RESEED, 0) -- (Database Console Command), reset OrderID identity to 0
+GO
 
-
+-- Execute Store Procedure
+EXEC Sales.insertPaymentManually;
+GO
 
 -- RETRIEVE results for SALES Schema:
 SELECT * FROM Sales.[Order];
