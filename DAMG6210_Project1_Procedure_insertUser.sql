@@ -35,8 +35,8 @@ BEGIN
 	CLOSE SYMMETRIC KEY TestSymmetricKey;
 END
 
-CREATE TRIGGER [User].onInsertUser
-	ON damg6210_Team1.[User].[User]  
+CREATE TRIGGER [User].[onInsertUser]
+	ON [DAMG6210_Team1].[User].[User]  
 	FOR INSERT 
 AS BEGIN 
 	DECLARE @usertype varchar(5);
@@ -50,7 +50,7 @@ AS BEGIN
 	
 	IF(@usertype = 'C')
 	BEGIN 
-		INSERT INTO DAMG6210_Team1.[User].[Membership] values('Silver', 0.05, CAST(GETDATE() AS DATE));
+		INSERT INTO DAMG6210_Team1.[User].[Membership] values('Bronze', 0.00, CAST(GETDATE() AS DATE));
 		SET @lastMemberId = SCOPE_IDENTITY();
 		INSERT INTO DAMG6210_Team1.[User].[Customer] values (@userid, @lastMemberId, null);
 		
