@@ -8,6 +8,18 @@ GO
 
 USE DAMG6210_Team1;
 
+-- Encryption KEY FOR DB
+-- Create DMK
+CREATE MASTER KEY
+ENCRYPTION BY PASSWORD = 'Test_P@sswOrd';
+-- Create certificate to protect symmetric key
+CREATE CERTIFICATE TestCertificate
+WITH SUBJECT = 'DAMG Certificate',
+EXPIRY_DATE = '2026-10-31';
+-- Create symmetric key to encrypt data
+CREATE SYMMETRIC KEY TestSymmetricKey
+WITH ALGORITHM = AES_128
+ENCRYPTION BY CERTIFICATE TestCertificate;
 
 -- SQLINES DEMO *** orward Engineering
 
@@ -298,10 +310,383 @@ CREATE TABLE [Sales].ItemOrdered (
 ;
 
 
-/* SET SQL_MODE=@OLD_SQL_MODE; */
-/* SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS; */
-/* SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS; */
+--Triggers and Stored Procedures
 
+DROP PROCEDURE IF EXISTS [User].insertUser;
+CREATE PROCEDURE [User].insertUser 
+@UserType varchar,
+@LastName varchar(45) ,
+@FirstName varchar(45),
+@PhoneNo varchar(45),
+@Email varchar(45),
+@Password varchar(45)
+AS
+
+BEGIN
+  OPEN SYMMETRIC KEY TestSymmetricKey DECRYPTION BY CERTIFICATE TestCertificate;
+  
+  INSERT INTO [User].[User] (UserType,LastName, FirstName, PhoneNo,Email,Password)
+  VALUES
+  (@UserType, @LastName, @FirstName, @PhoneNo, @Email, EncryptByKey(Key_GUID(N'TestSymmetricKey'), convert(varbinary, @Password)));
+
+  CLOSE SYMMETRIC KEY TestSymmetricKey;
+END
+
+CREATE TRIGGER [User].[onInsertUser]
+  ON [DAMG6210_Team1].[User].[User]  
+  FOR INSERT 
+AS BEGIN 
+  DECLARE @usertype varchar(5);
+  DECLARE @userid INT;
+  DECLARE @lastMemberId INT;
+  
+  SELECT @userid = i.UserID from INSERTED i;
+  SELECT @usertype = i.UserType from INSERTED i;
+    
+  
+  
+  IF(@usertype = 'C')
+  BEGIN 
+    INSERT INTO DAMG6210_Team1.[User].[Membership] values('Bronze', 0.00, CAST(GETDATE() AS DATE));
+    SET @lastMemberId = SCOPE_IDENTITY();
+    INSERT INTO DAMG6210_Team1.[User].[Customer] values (@userid, @lastMemberId, null);
+    
+  END
+  IF(@usertype = 'M')
+  BEGIN 
+    INSERT INTO DAMG6210_Team1.[User].[Manager]  values (@userid);
+  END
+  IF(@usertype = 'D')
+  BEGIN 
+    INSERT INTO DAMG6210_Team1.[User].[DeliveryPerson]  values (@userid);
+  END   
+END
+
+USE DAMG6210_Team1;
+
+-- Database tables DDL scripts = Max
+-- Connecting to data input wizard and load data into tables = Jessica
+-- Trigger & Function sequence:
+--   Step 1: insert data into Order, leave Order.OrderPrice as 0 
+--   Step 2: trigger the update of membership (Trigger 1)
+--   Step 3: insert data into ItemOrdered, every insert will automatically update the Order.OrderPrice (Trigger 2)
+--   Step 4: execute function to update Payment.PaymentAmount (Function 1)
+
+
+-------------------------------------------- Computed Columns based on a function  ---------------------------------------------------------------------------
+
+-- Function 1 - after the Membership.Discount & Order.OrderPrice having been updated by trigger, calcualte the Payment.PaymentAmount
+CREATE FUNCTION UpatePayment
+(@OrderID INT)
+RETURNS MONEY
+AS 
+BEGIN 
+  DECLARE @OrderPrice MONEY;
+  DECLARE @Discount FLOAT;
+  DECLARE @CustomerID INT;
+  DECLARE @MemberID INT;  
+  
+  SELECT @CustomerID = CustomerID
+  FROM Sales.[Order] o 
+  WHERE OrderID = @OrderID
+  
+  SELECT @MemberID = MemberID
+  FROM [User].Customer c 
+  WHERE CustomerID = @CustomerID
+
+  SELECT @OrderPrice = OrderPrice
+  FROM Sales.[Order] o 
+  WHERE OrderID = @OrderID
+    
+  SELECT @Discount = Discount
+  FROM [User].Membership m 
+  WHERE MemberID = @MemberID
+  
+  RETURN @OrderPrice * @Discount
+END
+
+ALTER TABLE Sales.Payment ALTER COLUMN PaymentAmount AS (dbo.UpatePayment(OrderID));
+
+--------------------------------------------------------------- Trigger -----------------------------------------------------------
+
+-- Trigger 1: when order inserted, update the Membership.MemberType & Membership.Discount based on date
+CREATE TRIGGER UpdateMembershipAndDiscount
+  ON Sales.[Order]  
+  AFTER INSERT
+AS
+  BEGIN     
+    DECLARE @CustomerInserted INT;        
+    DECLARE @MemberType VARCHAR(45);
+    DECLARE @Discount FLOAT;
+    DECLARE @MemberID INT;    
+    DECLARE @StartDate DATE;
+    DECLARE @DateDiff INT;
+  
+    SELECT @CustomerInserted = i.CustomerID
+    FROM Inserted i
+
+    SELECT @MemberID = MemberID
+    FROM [User].Customer
+    WHERE CustomerID = @CustomerInserted
+
+    SELECT @StartDate = StartDate
+    FROM [User].Membership
+    WHERE MemberID = @MemberID
+    
+    SET @DateDiff = DATEDIFF(DAY, @StartDate, GETDATE())
+    
+    IF @DateDiff < 30
+      BEGIN 
+        SET @MemberType = 'Bronze'
+        SET @Discount = 0.00        
+      END
+    ELSE IF @DateDiff < 60
+      BEGIN 
+        SET @MemberType = 'Silver'
+        SET @Discount = 0.10        
+      END
+    ELSE IF @DateDiff < 90
+      BEGIN 
+        SET @MemberType = 'Gold'
+        SET @Discount = 0.20        
+      END
+    ELSE IF @DateDiff < 120
+      BEGIN 
+        SET @MemberType = 'Platinum'
+        SET @Discount = 0.25        
+      END
+    ELSE 
+      BEGIN 
+        SET @MemberType = 'Crown'
+        SET @Discount = 0.30        
+      END   
+    
+    UPDATE dbo.Membership       
+      SET MemberType = @MemberType
+      WHERE MemberID = @MemberID
+    UPDATE dbo.Membership       
+      SET Discount = @Discount
+      WHERE MemberID = @MemberID
+  END
+
+
+-- Trigger 2: when ItemOrdered inserted, update the Order.OrderPrice
+CREATE TRIGGER UpdateOrderPrice
+  ON Sales.ItemOrdered
+  AFTER INSERT
+AS 
+BEGIN 
+  DECLARE @NewOrderPrice MONEY;
+  DECLARE @OldOrderPrice MONEY;
+  DECLARE @OrderID INT;
+  DECLARE @NewItemTotal MONEY;
+  
+  SELECT @OrderID = OrderID
+  FROM Inserted i
+  
+  SELECT @OldOrderPrice = OrderPrice
+  FROM Sales.[Order] o2 
+  WHERE OrderID = @OrderID
+  
+  SELECT @NewItemTotal = SUM(m.UnitPrice * i.Quantity)
+  FROM Inserted i
+  JOIN Restaurant.MenuItems m
+  ON i.ItemID = m.ItemID 
+  
+  UPDATE Sales.[Order]  
+    SET OrderPrice = @OldOrderPrice + @NewItemTotal     
+    WHERE OrderID = @OrderID            
+END
+
+
+--Trigger 3: change status of OrderStatus based on Payment Status.
+DROP Trigger IF EXISTS Sales.changeOrderStatusWithPayment;
+CREATE TRIGGER Sales.changeOrderStatusWithPayment ON Sales.Payment 
+After UPDATE , INSERT
+AS 
+BEGIN
+  DECLARE @oid int = 0;
+  DECLARE @status varchar(45);
+
+  SELECT @oid = OrderID, @status = PaymentStatus FROM inserted i;
+
+  IF @status = 'Completed'
+    UPDATE [Sales].[Order] SET OrderStatus = 'Completed' WHERE OrderId = @oid;
+  ELSE 
+    UPDATE [Sales].[Order] SET OrderStatus = 'Pending' WHERE OrderId = @oid;
+END
+
+--******************************************************--
+--This stored procedure manually add all 34 orders
+DROP PROCEDURE IF EXISTS Sales.insertPaymentManually;
+CREATE PROCEDURE Sales.insertPaymentManually 
+AS 
+BEGIN 
+  INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (1, 7,'Completed');
+  INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (2, 8, 'Completed');
+  INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (3, 9, 'Completed');
+  INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (4, 12, 'Pending');
+  INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (5, 15,'Pending');
+  INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (6, 12,'Pending');
+  INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (7, 15,'Completed');
+  INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (8, 12,'Pending');
+  INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (9, 15,'Pending');
+  INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (10, 10,'Completed');
+  INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (11, 13,'Completed');
+  INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (12, 2,'Completed');
+  INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (13, 3,'Completed');
+  INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (14, 14,'Completed');
+  INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (15, 11,'Pending');
+  INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (16, 16,'Completed');
+  INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (17, 12,'Completed');
+  INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (18, 15,'Pending');
+  INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (19, 12,'Completed');
+  INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (20, 15,'Completed');
+  INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (21, 12,'Completed');
+  INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (22, 15,'Completed');
+  INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (23, 10,'Pending');
+  INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (24, 11,'Pending');
+  INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (25, 10,'Completed');
+  INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (26, 11,'Pending');
+  INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (27, 10,'Completed');
+  INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (28, 11,'Pending');
+  INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (29, 18,'Pending');
+  INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (30, 19,'Completed');
+  INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (31, 18,'Completed');
+  INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (32, 19,'Completed');
+  INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (33, 18,'Pending');
+  INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (34, 19,'Pending');
+END
+
+--******************************************************
+-- Views
+/*
+
+Code for creating the views on base tables for data analytics.
+
+
+*/
+
+------------------------------- average rating for restaurant ----
+
+USE [DAMG6210_Team1]
+GO
+
+/****** Object:  View [dbo].[avgRating]    Script Date: 4/14/2022 5:34:22 PM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+create view [dbo].[avgRating]  as 
+
+select 
+  b.RestaurantID, 
+  a.[Name] as Restaurant_Name, 
+  count(*) as Review_count, 
+  avg(c.Rate) as Business_Rating,
+  e.CityName,
+  sum(b.OrderPrice) as TotalBusiness
+from Restaurant.Restaurant a
+join Sales.[Order] b
+on a.RestaurantID = b.RestaurantID
+join Sales.OrderReview c
+on b.OrderID = c.OrderID
+join Address.Address d
+on a.AddressID = d.AddressID
+join Address.City e
+on e.CityID = d.CityID
+group by b.RestaurantID, a.[Name], CityName
+GO
+
+-------------------------------------------------------------------------------
+
+USE [DAMG6210_Team1]
+GO
+
+/****** Object:  View [dbo].[topRestaurants]    Script Date: 4/14/2022 5:25:58 PM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE VIEW [dbo].[topRestaurants] AS
+with cte as  (
+select a.CustomerID ,c.[Name] as Restaurant_Name,
+rank() over (Partition by a.CustomerID order by sum(b.OrderPrice) desc) as [rank] --top 3 order values
+from [User].Customer a
+join Sales.[Order] b
+on a.CustomerID = b.CustomerID
+join Restaurant.Restaurant c
+on b.RestaurantID = c.RestaurantID
+group by a.CustomerID, c.[Name] ) ,
+cte1 as 
+(Select a.CustomerID, count(distinct b.OrderID) as [TotalOrderCount] --- customer total order count
+from [User].Customer a 
+join Sales.[Order] b
+on a.CustomerID = b.CustomerID
+group by a.CustomerID)
+select a.CustomerID ,b.TotalOrderCount ,string_agg( cast(a.Restaurant_Name as varchar) ,' , ') as [Top3Restaurant]
+from cte as a
+join cte1 as b
+on a.CustomerID=b.CustomerID
+where a.[rank] <=3
+group by  a.CustomerID , TotalOrderCount
+GO
+
+
+USE [DAMG6210_Team1]
+GO
+
+/****** Object:  View [dbo].[RestaurantReview]    Script Date: 4/14/2022 10:23:46 PM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+create view [dbo].[RestaurantReview] as
+with cte as (
+select 
+  a.[Name] as Restaurant_Name, 
+  count(c.orderID) as Review_count, 
+  avg(c.Rate) as Business_Rating
+from Restaurant.Restaurant a
+join Sales.[Order] b
+on a.RestaurantID = b.RestaurantID
+join Sales.OrderReview c
+on b.OrderID = c.OrderID
+group by a.[Name]
+)
+select Restaurant_Name,
+    isnull(cast([1] as int), 0) 'Rating 1',
+    isnull(cast([2] as int), 0) 'Rating 2',
+    isnull(cast([3] as int), 0) 'Rating 3',
+    isnull(cast([4] as int), 0) 'Rating 4',
+    isnull(cast([5] as int), 0) 'Rating 5'
+from
+(select Restaurant_Name, Review_count, Business_Rating from cte) as sourceTb
+pivot (max(Review_count) for Business_Rating in ([1],[2],[3],[4],[5])) as pivotTb
+GO
+
+
+
+--CREATE VIEW to retrieve all restaurant menu and pricing in horizontal list:
+USE [DAMG6210_Team1]
+GO
+
+CREATE VIEW [dbo].[AllRestaurantMenu] as 
+  SELECT r.RestaurantID, r.Name, m.MenuName, 
+    STRING_AGG(ItemName + ' $' + CAST(UnitPrice AS VARCHAR) 
+        , ', ') AS [Item Names and Price]
+  FROM Restaurant.Restaurant r
+  JOIN Restaurant.Menu m
+  ON r.RestaurantID = m.RestaurantID
+  JOIN Restaurant.MenuItems mi
+  ON m.MenuID = mi.MenuID
+  GROUP BY r.RestaurantID, r.Name, m.MenuName;
 
 /* start INSERTING DATA to tables*/
 --------------------INSERT ADDRESS SCHEMA----------------------
@@ -310,13 +695,13 @@ CREATE TABLE [Sales].ItemOrdered (
 -- insert City with CityID:
 INSERT INTO Address.City 
 VALUES ('Seattle'), ('Bellevue'), ('Lynnwood'), 
-		('Portland'), ('Eugene'), 
-		('New York'), ('Los Angeles'), ('Chicago'), 
-		('Miami'), ('Dallas')
+    ('Portland'), ('Eugene'), 
+    ('New York'), ('Los Angeles'), ('Chicago'), 
+    ('Miami'), ('Dallas')
 
 
 --insert randomly generated addresses (fake address) for customers, real addresses for restaurants:
--- AddressID	Street	AptNo	ZipCode	CityID	StateID	AddressType
+-- AddressID  Street  AptNo ZipCode CityID  StateID AddressType
 INSERT INTO [Address].Address
 VALUES ('9226 Walnut Lane', NULL, '60018', 3, 'WA', 'C');
 INSERT INTO Address.Address
@@ -361,15 +746,15 @@ VALUES ('555 S Alexandria Ave', '110', '90020', 7, 'CA', 'R'); --Blue Bottle Cof
 --insert more address for customers, randomly generated (total 20 customers):
 INSERT INTO Address.Address
 VALUES ('12345 8th AVE NE', '3', '98125', 1, 'WA', 'C'),
-	('635 Wood Street', NULL, '98107', 2, 'WA', 'C'),
-	('14 216th PL SE', NULL, '98036', 3, 'WA', 'C'),
-	('9880 Harrison Dr.', '321', '98109', 1, 'WA', 'C'),
-	('238 Sage Ave.', NULL, '98107', 2, 'WA', 'C'),
-	('5200 169th PL SW', NULL, '98037', 3, 'WA', 'C'),
-	('212 Primrose St.', '145', '11226', 4, 'OR', 'C'),
-	('9824 Pine Drive', NULL, '11227', 4, 'OR', 'C'),
-	('9617 Academy Drive', '888', '90072', 7, 'CA', 'C'),
-	('15 Princeton Ave.', '777', '90071', 7, 'CA', 'C'); 
+  ('635 Wood Street', NULL, '98107', 2, 'WA', 'C'),
+  ('14 216th PL SE', NULL, '98036', 3, 'WA', 'C'),
+  ('9880 Harrison Dr.', '321', '98109', 1, 'WA', 'C'),
+  ('238 Sage Ave.', NULL, '98107', 2, 'WA', 'C'),
+  ('5200 169th PL SW', NULL, '98037', 3, 'WA', 'C'),
+  ('212 Primrose St.', '145', '11226', 4, 'OR', 'C'),
+  ('9824 Pine Drive', NULL, '11227', 4, 'OR', 'C'),
+  ('9617 Academy Drive', '888', '90072', 7, 'CA', 'C'),
+  ('15 Princeton Ave.', '777', '90071', 7, 'CA', 'C'); 
 
 --Insert User, Manager, DeliveryPerson, Customer using StoredProcedure
 --SP params - UserType(M - Manager, D - Delivery Person, C - Customer), LastName, FirstName, Phone, Email, Password
@@ -446,26 +831,26 @@ SELECT * FROM Address.State;
 
 ---------------- INSERT Restaurant SCHEMA----------------------
 -- Insert Restaurant Entity
---COLUMN: RestaurantID	ManagerID	AddressID	Name	PhoneNo	OpenTime	CloseTime
+--COLUMN: RestaurantID  ManagerID AddressID Name  PhoneNo OpenTime  CloseTime
 INSERT INTO Restaurant.Restaurant
 VALUES (11, 11, 'The Pink Door', '206-443-3241', '11:30', '22:00'),
-	(2, 12, 'Ramen Danbo', '206-566-5479', '11:00', '23:00'),
-	(3, 13, 'Cedars in University District', '206-527-4000', '11:00', '22:00'),
-	(4, 14, 'The Dolar Shop Seattle', '425-390-8888', '12:00', '22:00'),
-	(5, 15, 'New Seoul Restaurant', '425-787-8616', '10:30', '21:00'),
-	(6, 16, 'Looking For Chai Taiwanese Kitchen', '425-502-7766', '11:00', '21:30'),
-	(7, 17, 'Nongs Khao Man Gai', '503-740-2907', '10:00', '20:00'),
-	(8, 18, 'Blue Star Donut', '503-265-8410', '07:00', '14:00'),
-	(9, 19, 'Sun Nong Dan 6th St.', '213-365-0303', '09:00', '23:30'),
-	(10, 20, 'Blue Bottle Coffee', '510-653-3394', '07:00', '18:00');
+  (2, 12, 'Ramen Danbo', '206-566-5479', '11:00', '23:00'),
+  (3, 13, 'Cedars in University District', '206-527-4000', '11:00', '22:00'),
+  (4, 14, 'The Dolar Shop Seattle', '425-390-8888', '12:00', '22:00'),
+  (5, 15, 'New Seoul Restaurant', '425-787-8616', '10:30', '21:00'),
+  (6, 16, 'Looking For Chai Taiwanese Kitchen', '425-502-7766', '11:00', '21:30'),
+  (7, 17, 'Nongs Khao Man Gai', '503-740-2907', '10:00', '20:00'),
+  (8, 18, 'Blue Star Donut', '503-265-8410', '07:00', '14:00'),
+  (9, 19, 'Sun Nong Dan 6th St.', '213-365-0303', '09:00', '23:30'),
+  (10, 20, 'Blue Bottle Coffee', '510-653-3394', '07:00', '18:00');
 
 -- INSERT Menu entity:
 INSERT INTO Restaurant.Menu
 VALUES (11, 'Pasta and Entree'),
-	(12, 'Ramen and Drink'), (13, 'Lunch and Dinner'),
-	(14, 'Hot Pot'), (15, 'Soups and Grill'),
-	(16, 'Chef Special'), (17, 'Menu'), (18, 'Donut'),
-	(19, 'Special menu'), (20, 'Coffee');
+  (12, 'Ramen and Drink'), (13, 'Lunch and Dinner'),
+  (14, 'Hot Pot'), (15, 'Soups and Grill'),
+  (16, 'Chef Special'), (17, 'Menu'), (18, 'Donut'),
+  (19, 'Special menu'), (20, 'Coffee');
 
 -- Insert MenuItems: import from excel file (MenuItems.xlsx)
 
@@ -520,7 +905,7 @@ DELETE FROM Sales.[Order]; -- start form empty column
 DBCC CHECKIDENT ('Sales.[Order]', RESEED, 0) -- (Database Console Command), reset OrderID identity to 0
 GO
 
--- COLUMN: OrderID(IDENTITY)	RestaurantID(11-20)	CustomerID(2-21)	DeliveryPersonID(0-9)	OrderStatus(varchar)	OrderPrice(function)
+-- COLUMN: OrderID(IDENTITY)  RestaurantID(11-20) CustomerID(2-21)  DeliveryPersonID(0-9) OrderStatus(varchar)  OrderPrice(function)
 -- delivery person: 0-5 are in WA, 6-7 portland, 8-9 in LA
 INSERT INTO Sales.[Order] VALUES (11, 7, 0,  'Complete', 0); 
 -- 11= Pink door, 12 = Danbo, 13= Cedars, 14= Dolar Shop, 15=New Seoul
@@ -570,7 +955,7 @@ INSERT INTO Sales.[Order] VALUES (18, 19, 7,  'Pending', 0);
 -- if needed for troubleshooting:
 DELETE FROM Sales.ItemOrdered; -- start from 0 entry
 
---OrderID(int)	ItemID(int)	Quantity(int)
+--OrderID(int)  ItemID(int) Quantity(int)
 INSERT INTO Sales.ItemOrdered VALUES (1, 1, 2), (1, 2, 1);
 INSERT INTO Sales.ItemOrdered VALUES (2, 1, 1),  (2, 2, 1); --11
 INSERT INTO Sales.ItemOrdered VALUES (3, 3, 1),  (3, 4, 1);
@@ -623,46 +1008,46 @@ INSERT INTO Sales.ItemOrdered VALUES (34, 40, 1),  (34, 38, 3), (34, 36, 2);
 --INSERT OrderReview (OrderID# 1-22), randomly generated:
 -- RID, OrderID (int), Rate (1-5), Review (varchar)
 INSERT INTO Sales.OrderReview VALUES 
-	(1, 5, 'Friendly delivery'),
-	(2, 4, 'good'),
-	(3, 5, 'Great delivery'),
-	(4, 3, 'Okay'),
-	(5, 5, 'Great food'),
-	(6, 5, 'Friendly delivery'),
-	(7, 4, 'good'),
-	(8, 5, 'Great delivery'),
-	(9, 3, 'Okay'),
-	(10, 5, 'Great food'),
-	(11, 5, 'Friendly delivery'),
-	(12, 4, 'good'),
-	(13, 5, 'Great'),
-	(14, 3, 'Okay'),
-	(15, 5, 'Great food'),
-	(16, 5, 'Good experience'),
-	(17, 4, 'Good'),
-	(18, 5, 'Great food'),
-	(19, 2, 'The food is cold and take a while'),
-	(20, 5, 'Great food'),
-	(21, 4, 'Okay'),
-	(22, 1, 'Not a great experience');
+  (1, 5, 'Friendly delivery'),
+  (2, 4, 'good'),
+  (3, 5, 'Great delivery'),
+  (4, 3, 'Okay'),
+  (5, 5, 'Great food'),
+  (6, 5, 'Friendly delivery'),
+  (7, 4, 'good'),
+  (8, 5, 'Great delivery'),
+  (9, 3, 'Okay'),
+  (10, 5, 'Great food'),
+  (11, 5, 'Friendly delivery'),
+  (12, 4, 'good'),
+  (13, 5, 'Great'),
+  (14, 3, 'Okay'),
+  (15, 5, 'Great food'),
+  (16, 5, 'Good experience'),
+  (17, 4, 'Good'),
+  (18, 5, 'Great food'),
+  (19, 2, 'The food is cold and take a while'),
+  (20, 5, 'Great food'),
+  (21, 4, 'Okay'),
+  (22, 1, 'Not a great experience');
 
 -- INSERT OrderReview for Order#23-28:
 INSERT INTO Sales.OrderReview VALUES 
-	(23, 5, 'Great'),
-	(24, 3, 'Good selection but overpriced'),
-	(25, 2, 'Better to dine in. It is expensive!'),
-	(26, 5, 'Good experience'),
-	(27, 4, 'Good'),
-	(28, 1, 'Food is bland and delivery takes a long time');
+  (23, 5, 'Great'),
+  (24, 3, 'Good selection but overpriced'),
+  (25, 2, 'Better to dine in. It is expensive!'),
+  (26, 5, 'Good experience'),
+  (27, 4, 'Good'),
+  (28, 1, 'Food is bland and delivery takes a long time');
 
 -- INSERT OrderReview for Order#23-28:
 INSERT INTO Sales.OrderReview VALUES 
-	(29, 3, 'Okay'),
-	(30, 5, 'Great food'),
-	(31, 5, 'Friendly delivery'),
-	(32, 4, 'Good donut!'),
-	(33, 5, 'Great flavor'),
-	(34, 3, 'Overpriced!');
+  (29, 3, 'Okay'),
+  (30, 5, 'Great food'),
+  (31, 5, 'Friendly delivery'),
+  (32, 4, 'Good donut!'),
+  (33, 5, 'Great flavor'),
+  (34, 3, 'Overpriced!');
 
 
 -- INSERT PAYMENT-------------
@@ -681,3 +1066,4 @@ SELECT * FROM Sales.[Order];
 SELECT * FROM Sales.ItemOrdered;
 SELECT * FROM Sales.Payment;
 SELECT * FROM Sales.OrderReview;
+
