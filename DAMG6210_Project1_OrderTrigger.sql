@@ -134,6 +134,7 @@ BEGIN
 		WHERE OrderID = @OrderID						
 END
 
+
 --Trigger 3: change status of OrderStatus based on Payment Status.
 DROP Trigger IF EXISTS Sales.changeOrderStatusWithPayment;
 CREATE TRIGGER Sales.changeOrderStatusWithPayment ON Sales.Payment 
@@ -192,3 +193,4 @@ BEGIN
 	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (33, 18,'Pending');
 	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (34, 19,'Pending');
 END
+
