@@ -134,3 +134,17 @@ BEGIN
 		WHERE OrderID = @OrderID						
 END
 
+-- CREATE VIEW to retrieve all restaurant menu and pricing in horizontal list:
+USE [DAMG6210_Team1]
+GO
+
+CREATE VIEW [dbo].[AllRestaurantMenu] as 
+	SELECT r.RestaurantID, r.Name, m.MenuName, 
+		STRING_AGG(ItemName + ' $' + CAST(UnitPrice AS VARCHAR) 
+				, ', ') AS [Item Names and Price]
+	FROM Restaurant.Restaurant r
+	JOIN Restaurant.Menu m
+	ON r.RestaurantID = m.RestaurantID
+	JOIN Restaurant.MenuItems mi
+	ON m.MenuID = mi.MenuID
+	GROUP BY r.RestaurantID, r.Name, m.MenuName;
