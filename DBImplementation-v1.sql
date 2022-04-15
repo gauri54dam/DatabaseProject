@@ -244,7 +244,7 @@ CREATE TABLE [Sales].OrderReview (
     REFERENCES [Sales].[Order] ([OrderID])
     )
 ;
-
+ALTER TABLE Sales.OrderReview ADD CONSTRAINT RateRange CHECK (Rate BETWEEN 1 AND 5);
 
 -- SQLINES DEMO *** ------------------------------------
 -- Table [Menu]
