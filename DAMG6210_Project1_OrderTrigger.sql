@@ -134,3 +134,63 @@ BEGIN
 		WHERE OrderID = @OrderID						
 END
 
+
+--Trigger 3: change status of OrderStatus based on Payment Status.
+DROP Trigger IF EXISTS Sales.changeOrderStatusWithPayment;
+CREATE TRIGGER Sales.changeOrderStatusWithPayment ON Sales.Payment 
+After UPDATE , INSERT
+AS 
+BEGIN
+	DECLARE @oid int = 0;
+	DECLARE @status varchar(45);
+
+	SELECT @oid = OrderID, @status = PaymentStatus FROM inserted i;
+
+	IF @status = 'Completed'
+		UPDATE [Sales].[Order] SET OrderStatus = 'Completed' WHERE OrderId = @oid;
+	ELSE 
+		UPDATE [Sales].[Order] SET OrderStatus = 'Pending' WHERE OrderId = @oid;
+END
+
+--******************************************************--
+--This stored procedure manually add all 34 orders
+DROP PROCEDURE IF EXISTS Sales.insertPaymentManually;
+CREATE PROCEDURE Sales.insertPaymentManually 
+AS 
+BEGIN 
+	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (1, 7,'Completed');
+	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (2, 8, 'Completed');
+	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (3, 9, 'Completed');
+	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (4, 12, 'Pending');
+	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (5, 15,'Pending');
+	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (6, 12,'Pending');
+	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (7, 15,'Completed');
+	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (8, 12,'Pending');
+	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (9, 15,'Pending');
+	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (10, 10,'Completed');
+	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (11, 13,'Completed');
+	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (12, 2,'Completed');
+	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (13, 3,'Completed');
+	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (14, 14,'Completed');
+	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (15, 11,'Pending');
+	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (16, 16,'Completed');
+	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (17, 12,'Completed');
+	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (18, 15,'Pending');
+	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (19, 12,'Completed');
+	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (20, 15,'Completed');
+	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (21, 12,'Completed');
+	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (22, 15,'Completed');
+	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (23, 10,'Pending');
+	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (24, 11,'Pending');
+	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (25, 10,'Completed');
+	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (26, 11,'Pending');
+	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (27, 10,'Completed');
+	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (28, 11,'Pending');
+	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (29, 18,'Pending');
+	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (30, 19,'Completed');
+	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (31, 18,'Completed');
+	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (32, 19,'Completed');
+	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (33, 18,'Pending');
+	INSERT INTO Sales.Payment (OrderID, CustomerID, PaymentStatus) VALUES (34, 19,'Pending');
+END
+
